@@ -33,7 +33,8 @@ def operator(in_file, out_file, mor_op, wait_key_time=0):
         cv2.imshow('manual dilation image', img_dilation_manual)
         cv2.waitKey(wait_key_time)
 
-        img_out = img_dilation
+        img_out = img_dilation_manual
+        
     elif mor_op == 'erode':
         img_erosion = cv2.erode(img, kernel)
         cv2.imshow('OpenCV erosion image', img_erosion)
@@ -44,6 +45,30 @@ def operator(in_file, out_file, mor_op, wait_key_time=0):
         cv2.waitKey(wait_key_time)
 
         img_out = img_erosion_manual
+        
+    elif mor_op == 'opening':
+        img_opening = cv2.morphologyEx(img, cv2.MORPH_OPEN, kernel) 
+
+        cv2.imshow('OpenCV opening image', img_opening)
+        cv2.waitKey(wait_key_time)
+
+        img_opening_manual = binary.opening(img, kernel)
+        cv2.imshow('manual opening image', img_opening_manual)
+        cv2.waitKey(wait_key_time)
+
+        img_out = img_opening_manual
+        
+    elif mor_op == 'closing':
+        img_closing = cv2.morphologyEx(img, cv2.MORPH_CLOSE, kernel) 
+        cv2.imshow('OpenCV closing image', img_closing)
+        cv2.waitKey(wait_key_time)
+
+        img_closing_manual = binary.closing(img, kernel)
+        cv2.imshow('manual closing image', img_closing_manual)
+        cv2.waitKey(wait_key_time)
+
+        img_out = img_closing_manual
+
 
     if img_out is not None:
         cv2.imwrite(out_file, img_out)
