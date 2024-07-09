@@ -68,6 +68,17 @@ def operator(in_file, out_file, mor_op, wait_key_time=0):
         cv2.waitKey(wait_key_time)
 
         img_out = img_closing_manual
+        
+    elif mor_op == 'hitmiss':
+        img_hitmiss = cv2.morphologyEx(img, cv2.MORPH_HITMISS, kernel) 
+        cv2.imshow('OpenCV hitmiss image', img_hitmiss)
+        cv2.waitKey(wait_key_time)
+
+        img_hitmiss_manual = binary.hitmiss(img, kernel)
+        cv2.imshow('manual hitmiss image', img_hitmiss_manual)
+        cv2.waitKey(wait_key_time)
+
+        img_out = img_hitmiss_manual
 
 
     if img_out is not None:
