@@ -6,13 +6,13 @@ from morphological_operator import binary
 
 
 def operator(in_file, out_file, mor_op, wait_key_time=0):
-    img_origin = cv2.imread(in_file)
-    cv2.imshow('original image', img_origin)
-    cv2.waitKey(wait_key_time)
+    # img_origin = cv2.imread(in_file)
+    # cv2.imshow('original image', img_origin)
+    # cv2.waitKey(wait_key_time)
 
     img_gray = cv2.imread(in_file, 0)
-    cv2.imshow('gray image', img_gray)
-    cv2.waitKey(wait_key_time)
+    # cv2.imshow('gray image', img_gray)
+    # cv2.waitKey(wait_key_time)
 
     (thresh, img) = cv2.threshold(img_gray, 128, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)
     cv2.imshow('binary image', img)
@@ -24,6 +24,7 @@ def operator(in_file, out_file, mor_op, wait_key_time=0):
     '''
     TODO: implement morphological operators
     '''
+    
     if mor_op == 'dilate':
         img_dilation = cv2.dilate(img, kernel)
         cv2.imshow('OpenCV dilation image', img_dilation)
@@ -79,6 +80,17 @@ def operator(in_file, out_file, mor_op, wait_key_time=0):
         cv2.waitKey(wait_key_time)
 
         img_out = img_hitmiss_manual
+        
+    elif mor_op == 'thinning':
+        img_thinning = cv2.ximgproc.thinning(img) # use Zhang-Suen in default
+        cv2.imshow('OpenCV thinning image', img_thinning)
+        cv2.waitKey(wait_key_time)
+
+        img_thinning_manual = binary.thinning(img)
+        cv2.imshow('manual thinning image', img_thinning_manual)
+        cv2.waitKey(wait_key_time)
+
+        img_out = img_thinning_manual
 
 
     if img_out is not None:
