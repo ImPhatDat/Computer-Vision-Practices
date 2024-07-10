@@ -1,9 +1,9 @@
 import sys
+import os
 import getopt
 import cv2
 import numpy as np
 from morphological_operator import binary
-
 
 def operator(in_file, out_file, mor_op, wait_key_time=0):
     # img_origin = cv2.imread(in_file)
@@ -86,12 +86,73 @@ def operator(in_file, out_file, mor_op, wait_key_time=0):
         cv2.imshow('OpenCV thinning image', img_thinning)
         cv2.waitKey(wait_key_time)
 
-        img_thinning_manual = binary.thinning(img)
-        cv2.imshow('manual thinning image', img_thinning_manual)
+        img_thinning_manual = binary.thinning(img, kernel)
+        cv2.imshow('manual thinning (morph) image', img_thinning_manual)
         cv2.waitKey(wait_key_time)
 
         img_out = img_thinning_manual
+    elif mor_op == 'zhang_suen':
+        img_thinning = cv2.ximgproc.thinning(img) # use Zhang-Suen in default
+        cv2.imshow('OpenCV thinning image', img_thinning)
+        cv2.waitKey(wait_key_time)
 
+        img_thinning_manual = binary.thinning(img)
+        cv2.imshow('manual thinning (zhang-suen) image', img_thinning_manual)
+        cv2.waitKey(wait_key_time)
+
+        img_out = img_thinning_manual
+    
+    
+    # ------ BONUS ------
+    elif mor_op == 'boundary':
+        img_boundary_manual = binary.boundary(img, kernel)
+        cv2.imshow('manual boundary image', img_boundary_manual)
+        cv2.waitKey(wait_key_time)
+
+        img_out = img_boundary_manual
+        
+    elif mor_op == 'hole_filling':
+        img_fill_hole_manual = binary.fill_hole(img, kernel, xpos=370, ypos=100)
+        cv2.imshow('manual fill_hole image', img_fill_hole_manual)
+        cv2.waitKey(wait_key_time)
+
+        img_out = img_fill_hole_manual
+        
+    elif mor_op == 'ccs':
+        # Find connected components
+        _, labels_im = cv2.connectedComponents(img)
+        # Map component labels to hue values for visualization
+        label_hue = np.uint8(179 * labels_im / np.max(labels_im))
+        blank_ch = 255 * np.ones_like(label_hue)
+        labeled_img = cv2.merge([label_hue, blank_ch, blank_ch])
+        labeled_img = cv2.cvtColor(labeled_img, cv2.COLOR_HSV2BGR) # for display
+        labeled_img[label_hue == 0] = 0 # Set background label to black
+        cv2.imshow('OpenCV ccs image', labeled_img)
+        cv2.waitKey(wait_key_time)
+        
+        img_ccs_manual = binary.connected_components(img, kernel, xpos=340, ypos=190)
+        cv2.imshow('manual ccs image', img_ccs_manual)
+        cv2.waitKey(wait_key_time)
+
+        img_out = img_ccs_manual
+        
+    elif mor_op == 'convex_hull':
+        # Find contours
+        contours, _ = cv2.findContours(img, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        img_with_hull = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR) # draw contours and convex hulls
+        for cnt in contours:
+            hull = cv2.convexHull(cnt)
+            cv2.drawContours(img_with_hull, [hull], -1, (0, 255, 0), 2)  # Draw green convex hulls
+        cv2.imshow('OpenCV convex_hull image', img_with_hull)
+        cv2.waitKey(wait_key_time)
+
+        img_convex_hull_manual = binary.convex_hull(img, kernel)
+        cv2.imshow('manual convex_hull image', img_convex_hull_manual)
+        cv2.waitKey(wait_key_time)
+
+        img_out = img_convex_hull_manual
+
+    
 
     if img_out is not None:
         cv2.imwrite(out_file, img_out)

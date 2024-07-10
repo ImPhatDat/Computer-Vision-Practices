@@ -26,6 +26,16 @@ def erode(img, kernel):
 '''
 TODO: implement morphological operators
 '''
+# helpers
+def complement(img):
+    return 255 - img
+
+def intersect_image(img1, img2):
+    return (np.logical_and(img1 == 255, img2 == 255) * 255).astype(np.uint8)
+
+def union_image(img1, img2):
+    return (np.logical_or(img1 == 255, img2 == 255) * 255).astype(np.uint8)
+
 # redefine
 def erode(img, kernel):
     kernel_center = (kernel.shape[0] // 2, kernel.shape[1] // 2)
@@ -41,7 +51,6 @@ def erode(img, kernel):
                 eroded_img[i, j] = 255 # use 255 instead of 1
 
     return eroded_img
-
 
 def dilate(img, kernel):
     kernel_center = (kernel.shape[0] // 2, kernel.shape[1] // 2)
@@ -63,18 +72,19 @@ def opening(img, kernel):
 def closing(img, kernel):
     return erode(dilate(img, kernel), kernel)
 
+# Hit-or-Miss transformation
 def hitmiss(img, kernel):
     # A eroded by B
     eroded_img = erode(img, kernel)
     # Ac eroded by Bc
-    eroded_complement = erode(255 - img, 1 - kernel)    
+    eroded_complement = erode(complement(img), 1 - kernel)    
     # Hit-or-Miss transform
-    hit_or_miss_result = np.logical_and(eroded_img == 255, eroded_complement == 255) * 255    
+    hit_or_miss_result = intersect_image(eroded_img, eroded_complement)
 
-    return hit_or_miss_result.astype(np.uint8)
+    return hit_or_miss_result
 
 # Zhang-Suen thinning algorithm, ref: https://rosettacode.org/wiki/Zhang-Suen_thinning_algorithm
-def thinning(img):
+def zhangsuen_thinning(img):
     # convert to binary
     img = img // 255
     
@@ -122,3 +132,86 @@ def thinning(img):
                     changing2.append((x,y))
         for x, y in changing2: img[y][x] = 0
     return img * 255
+
+def thinning(img, kernel=None):
+    if kernel is None:
+        return zhangsuen_thinning(img)
+    
+    # use morphological operators: A - (A hitmiss B)
+    return subtract(img, hitmiss(img, kernel))
+
+
+# ------ BONUS ------
+
+def subtract(img1, img2):
+    return (np.clip(img1 - img2, 0, 255)).astype(np.uint8)
+
+# Boundary Extraction
+def boundary(img, kernel):
+    # A - (A eroded by B)
+    return subtract(img, erode(img, kernel))
+
+# Hole Filling
+def fill_hole(img, kernel, xpos, ypos):
+    # Xk = (X{k - 1} dilated by B) intersect Ac
+    imgc = complement(img)
+    X_current = np.zeros_like(img)
+    X_current[ypos, xpos] = 255
+    while True: 
+        X_prev = X_current.copy()
+        X_current = intersect_image(dilate(X_prev, kernel), imgc)
+        # loop untils Xk = X{k - 1}
+        if np.array_equal(X_prev, X_current):
+            break
+    res = union_image(X_current, img)
+    return res
+
+# Extraction of Connected Components
+def connected_components(img, kernel, xpos, ypos):
+    # Xk = (X{k - 1} dilated by B) intersect A
+    X_current = np.zeros_like(img)
+    X_current[ypos, xpos] = 255
+    while True: 
+        X_prev = X_current.copy()
+        X_current = intersect_image(dilate(X_prev, kernel), img)
+        # loop untils Xk = X{k - 1}
+        if np.array_equal(X_prev, X_current):
+            break
+    return X_current
+
+# Convex Hull
+def convex_hull(img, Bs=None):
+    if Bs is None:
+        # default using left, right, top, bottom borders
+        tmp_kernel = np.full((3, 3), np.nan)
+        tmp_kernel[1, 1] = 0
+        Bs = [tmp_kernel.copy() for _ in range(4)]
+        
+        Bs[0][:, 0] = 1 # left
+        Bs[1][0, :] = 1 # top
+        Bs[2][:, -1] = 1 # right
+        Bs[3][-1, :] = 1 # bottom
+    
+    X_current = [img.copy() for _ in range(len(Bs))]
+    
+    for i in range(len(X_current)):
+        while True:
+            X_prev = X_current[i].copy()
+            X_current[i] = union_image(hitmiss(X_prev, Bs[i]), img)
+            
+            if X_current[i] == X_prev:
+                break
+    
+    # union D (last X) to C(A)
+    res = X_current[0]
+    for i in range(len(X_current) - 1):
+        res = union_image(res, X_current[i + 1])
+    return res
+    
+# Thickening
+
+# Skeletons
+
+# Pruning
+
+# Morphological Reconstruction
