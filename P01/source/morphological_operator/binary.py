@@ -1,5 +1,5 @@
 import numpy as np
-
+from cv2 import imshow, waitKey # for debugging and view process only
 
 def erode(img, kernel):
     kernel_center = (kernel.shape[0] // 2, kernel.shape[1] // 2)
@@ -31,15 +31,17 @@ def complement(img):
     return 255 - img
 
 def intersect_image(img1, img2):
-    return (np.logical_and(img1 == 255, img2 == 255) * 255).astype(np.uint8)
+    # (np.logical_and(img1 == 255, img2 == 255) * 255).astype(np.uint8)
+    return np.minimum(img1, img2)
 
 def union_image(img1, img2):
-    return (np.logical_or(img1 == 255, img2 == 255) * 255).astype(np.uint8)
+    # (np.logical_or(img1 == 255, img2 == 255) * 255).astype(np.uint8)
+    return np.maximum(img1, img2)
 
 # redefine
 def erode(img, kernel):
     kernel_center = (kernel.shape[0] // 2, kernel.shape[1] // 2)
-    kernel_ones_count = kernel.sum()
+    kernel_ones_count = np.sum(kernel)
     padded_img = np.pad(img, ((kernel_center[0], kernel_center[0]), (kernel_center[1], kernel_center[1])), 
                         mode='constant', constant_values=0) # use pad instead of append
     eroded_img = np.zeros_like(img)
@@ -75,12 +77,16 @@ def closing(img, kernel):
 # Hit-or-Miss transformation
 def hitmiss(img, kernel):
     # A eroded by B
-    eroded_img = erode(img, kernel)
+    kernel1 = np.where(kernel == -1, 0, kernel)
+    eroded_img = erode(img, kernel1)
     # Ac eroded by Bc
-    eroded_complement = erode(complement(img), 1 - kernel)    
-    # Hit-or-Miss transform
+    kernel2 = np.where(kernel == 1, 0, kernel)
+    kernel2 = np.where(kernel2 == -1, 1, kernel2)
+    eroded_complement = erode(complement(img), kernel2)   
+    
+    # intersect 
     hit_or_miss_result = intersect_image(eroded_img, eroded_complement)
-
+    
     return hit_or_miss_result
 
 # Zhang-Suen thinning algorithm, ref: https://rosettacode.org/wiki/Zhang-Suen_thinning_algorithm
@@ -138,7 +144,8 @@ def thinning(img, kernel=None):
         return zhangsuen_thinning(img)
     
     # use morphological operators: A - (A hitmiss B)
-    return subtract(img, hitmiss(img, kernel))
+    # or A intersect (A hitmiss B)c
+    return intersect_image(img, complement(hitmiss(img, kernel)))
 
 
 # ------ BONUS ------
@@ -160,6 +167,10 @@ def fill_hole(img, kernel, xpos, ypos):
     while True: 
         X_prev = X_current.copy()
         X_current = intersect_image(dilate(X_prev, kernel), imgc)
+        
+        imshow("in progress", X_current)
+        waitKey(50)
+        
         # loop untils Xk = X{k - 1}
         if np.array_equal(X_prev, X_current):
             break
@@ -174,39 +185,47 @@ def connected_components(img, kernel, xpos, ypos):
     while True: 
         X_prev = X_current.copy()
         X_current = intersect_image(dilate(X_prev, kernel), img)
+        
+        imshow("in progress", X_current)
+        waitKey(50)
+        
         # loop untils Xk = X{k - 1}
         if np.array_equal(X_prev, X_current):
             break
     return X_current
 
 # Convex Hull
-def convex_hull(img, Bs=None):
-    if Bs is None:
-        # default using left, right, top, bottom borders
-        tmp_kernel = np.full((3, 3), np.nan)
-        tmp_kernel[1, 1] = 0
-        Bs = [tmp_kernel.copy() for _ in range(4)]
-        
-        Bs[0][:, 0] = 1 # left
-        Bs[1][0, :] = 1 # top
-        Bs[2][:, -1] = 1 # right
-        Bs[3][-1, :] = 1 # bottom
+def convex_hull(img):
+    # default using left, right, top, bottom borders
+    tmp_kernel = np.full((3, 3), 0)
+    tmp_kernel[1, 1] = -1
+    Bs = [tmp_kernel.copy() for _ in range(4)]
     
-    X_current = [img.copy() for _ in range(len(Bs))]
+    Bs[0][:, 0] = 1 # left
+    Bs[1][0, :] = 1 # top
+    Bs[2][:, -1] = 1 # right
+    Bs[3][-1, :] = 1 # bottom
     
-    for i in range(len(X_current)):
+    X_currents = [img.copy() for _ in range(len(Bs))]
+    
+    for i in range(len(X_currents)):
+        X_prev_prev = None
         while True:
-            X_prev = X_current[i].copy()
-            X_current[i] = union_image(hitmiss(X_prev, Bs[i]), img)
+            X_prev = X_currents[i].copy()
+            X_currents[i] = union_image(hitmiss(X_currents[i], Bs[i]), img)
+        
+            imshow(f"in progress ({i})", X_currents[i])
+            waitKey(50)
             
-            if X_current[i] == X_prev:
+            if np.array_equal(X_currents[i], X_prev) or np.array_equal(X_currents[i], X_prev_prev):
                 break
+            X_prev_prev = X_prev
     
-    # union D (last X) to C(A)
-    res = X_current[0]
-    for i in range(len(X_current) - 1):
-        res = union_image(res, X_current[i + 1])
-    return res
+    # union D (last X) to get C(A)
+    res = X_currents[0]
+    for i in range(len(X_currents) - 1):
+        res = union_image(res, X_currents[i + 1])
+    return res.astype(np.uint8)
     
 # Thickening
 

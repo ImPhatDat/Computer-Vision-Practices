@@ -5,7 +5,7 @@ import cv2
 import numpy as np
 from morphological_operator import binary
 
-def operator(in_file, out_file, mor_op, wait_key_time=0):
+def operator(in_file, out_file, mor_op, wait_key_time=0, xpos=None, ypos=None):
     # img_origin = cv2.imread(in_file)
     # cv2.imshow('original image', img_origin)
     # cv2.waitKey(wait_key_time)
@@ -86,18 +86,19 @@ def operator(in_file, out_file, mor_op, wait_key_time=0):
         cv2.imshow('OpenCV thinning image', img_thinning)
         cv2.waitKey(wait_key_time)
 
-        img_thinning_manual = binary.thinning(img, kernel)
-        cv2.imshow('manual thinning (morph) image', img_thinning_manual)
+        img_thinning_manual = binary.thinning(img)
+        cv2.imshow('manual thinning (zhang-suen) image', img_thinning_manual)
         cv2.waitKey(wait_key_time)
 
         img_out = img_thinning_manual
-    elif mor_op == 'zhang_suen':
-        img_thinning = cv2.ximgproc.thinning(img) # use Zhang-Suen in default
+        
+    elif mor_op == 'morph_thinning':
+        img_thinning = cv2.ximgproc.thinning(img)
         cv2.imshow('OpenCV thinning image', img_thinning)
         cv2.waitKey(wait_key_time)
 
-        img_thinning_manual = binary.thinning(img)
-        cv2.imshow('manual thinning (zhang-suen) image', img_thinning_manual)
+        img_thinning_manual = binary.thinning(img, kernel)
+        cv2.imshow('manual thinning (morph) image', img_thinning_manual)
         cv2.waitKey(wait_key_time)
 
         img_out = img_thinning_manual
@@ -105,6 +106,10 @@ def operator(in_file, out_file, mor_op, wait_key_time=0):
     
     # ------ BONUS ------
     elif mor_op == 'boundary':
+        img_boundary = cv2.subtract(img, cv2.erode(img, kernel))
+        cv2.imshow('OpenCV boundary image', img_boundary)
+        cv2.waitKey(wait_key_time)
+        
         img_boundary_manual = binary.boundary(img, kernel)
         cv2.imshow('manual boundary image', img_boundary_manual)
         cv2.waitKey(wait_key_time)
@@ -112,7 +117,13 @@ def operator(in_file, out_file, mor_op, wait_key_time=0):
         img_out = img_boundary_manual
         
     elif mor_op == 'hole_filling':
-        img_fill_hole_manual = binary.fill_hole(img, kernel, xpos=370, ypos=100)
+        img_floodfill = img.copy()
+        cv2.floodFill(img_floodfill, None, (0,0), 255)
+        img_hole_filling = img + cv2.bitwise_not(img_floodfill)
+        cv2.imshow('OpenCV fill_hole image', img_hole_filling)
+        cv2.waitKey(wait_key_time)
+        
+        img_fill_hole_manual = binary.fill_hole(img, kernel, xpos=xpos, ypos=ypos)
         cv2.imshow('manual fill_hole image', img_fill_hole_manual)
         cv2.waitKey(wait_key_time)
 
@@ -130,7 +141,7 @@ def operator(in_file, out_file, mor_op, wait_key_time=0):
         cv2.imshow('OpenCV ccs image', labeled_img)
         cv2.waitKey(wait_key_time)
         
-        img_ccs_manual = binary.connected_components(img, kernel, xpos=340, ypos=190)
+        img_ccs_manual = binary.connected_components(img, kernel, xpos=xpos, ypos=ypos)
         cv2.imshow('manual ccs image', img_ccs_manual)
         cv2.waitKey(wait_key_time)
 
@@ -146,7 +157,7 @@ def operator(in_file, out_file, mor_op, wait_key_time=0):
         cv2.imshow('OpenCV convex_hull image', img_with_hull)
         cv2.waitKey(wait_key_time)
 
-        img_convex_hull_manual = binary.convex_hull(img, kernel)
+        img_convex_hull_manual = binary.convex_hull(img)
         cv2.imshow('manual convex_hull image', img_convex_hull_manual)
         cv2.waitKey(wait_key_time)
 
@@ -163,11 +174,15 @@ def main(argv):
     output_file = ''
     mor_op = ''
     wait_key_time = 0
+    
+    # optional
+    xpos = ypos = 0 
 
-    description = 'main.py -i <input_file> -o <output_file> -p <mor_operator> -t <wait_key_time>'
+    description = 'main.py -i <input_file> -o <output_file> -p <mor_operator> -t <wait_key_time>  --x <xpos> --y <ypos>'
 
     try:
-        opts, args = getopt.getopt(argv, "hi:o:p:t:", ["in_file=", "out_file=", "mor_operator=", "wait_key_time="])
+        opts, args = getopt.getopt(argv, "hi:o:p:t:", ["in_file=", "out_file=", "mor_operator=", "wait_key_time=",
+                                                       "xpos=", "ypos="])
     except getopt.GetoptError:
         print(description)
         sys.exit(2)
@@ -184,13 +199,17 @@ def main(argv):
             mor_op = arg
         elif opt in ("-t", "--wait_key_time"):
             wait_key_time = int(arg)
+        elif opt == "--x":
+            xpos = int(arg)
+        elif opt == "--y":
+            ypos = int(arg)
 
     print('Input file is ', input_file)
     print('Output file is ', output_file)
     print('Morphological operator is ', mor_op)
     print('Wait key time is ', wait_key_time)
 
-    operator(input_file, output_file, mor_op, wait_key_time)
+    operator(input_file, output_file, mor_op, wait_key_time, xpos, ypos)
     cv2.waitKey(wait_key_time)
 
 
