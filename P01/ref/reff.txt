@@ -1,0 +1,2 @@
+https://homepages.inf.ed.ac.uk/rbf/HIPR2/thick.htm
+ref: https://rosettacode.org/wiki/Zhang-Suen_thinning_algorithm

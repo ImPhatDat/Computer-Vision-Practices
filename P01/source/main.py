@@ -20,6 +20,10 @@ def operator(in_file, out_file, mor_op, wait_key_time=0, xpos=None, ypos=None):
 
     kernel = np.ones((3, 3), np.uint8)
     img_out = None
+    
+    kernel = np.array([[1, 0, 0],
+                       [1, 0, 0],
+                       [1, 0, 0]], dtype=np.uint8)
 
     '''
     TODO: implement morphological operators
@@ -93,7 +97,7 @@ def operator(in_file, out_file, mor_op, wait_key_time=0, xpos=None, ypos=None):
         img_out = img_thinning_manual
         
     elif mor_op == 'morph_thinning':
-        img_thinning = cv2.ximgproc.thinning(img)
+        img_thinning = cv2.bitwise_and(img, cv2.bitwise_not(cv2.morphologyEx(img, cv2.MORPH_HITMISS, kernel)))
         cv2.imshow('OpenCV thinning image', img_thinning)
         cv2.waitKey(wait_key_time)
 
@@ -163,6 +167,28 @@ def operator(in_file, out_file, mor_op, wait_key_time=0, xpos=None, ypos=None):
 
         img_out = img_convex_hull_manual
 
+    elif mor_op == 'thickening':
+        # Note that for thickening to work, 
+        # the structuring element must always have a zero or a blank at its origin
+        
+        kernel[1,1] = 0
+
+        img_thickening = cv2.bitwise_or(img, cv2.morphologyEx(img, cv2.MORPH_HITMISS, kernel))
+        cv2.imshow('OpenCV thickening image', img_thickening)
+        cv2.waitKey(wait_key_time)
+        
+        img_thickening_manual = binary.thickening(img, kernel)
+        cv2.imshow('manual thickening image', img_thickening_manual)
+        cv2.waitKey(wait_key_time)
+
+        img_out = img_thickening_manual
+        
+    elif mor_op == 'skeletons':        
+        img_skeletons_manual = binary.skeletons(img, kernel)
+        cv2.imshow('manual skeletons image', img_skeletons_manual)
+        cv2.waitKey(wait_key_time)
+
+        img_out = img_skeletons_manual
     
 
     if img_out is not None:
@@ -178,7 +204,7 @@ def main(argv):
     # optional
     xpos = ypos = 0 
 
-    description = 'main.py -i <input_file> -o <output_file> -p <mor_operator> -t <wait_key_time>  --x <xpos> --y <ypos>'
+    description = 'main.py -i <input_file> -o <output_file> -p <mor_operator> -t <wait_key_time>  -x <xpos> -y <ypos>'
 
     try:
         opts, args = getopt.getopt(argv, "hi:o:p:t:", ["in_file=", "out_file=", "mor_operator=", "wait_key_time=",
@@ -199,9 +225,9 @@ def main(argv):
             mor_op = arg
         elif opt in ("-t", "--wait_key_time"):
             wait_key_time = int(arg)
-        elif opt == "--x":
+        elif opt in ("-x", "--xpos"):
             xpos = int(arg)
-        elif opt == "--y":
+        elif opt in ("-y", "--ypos"):
             ypos = int(arg)
 
     print('Input file is ', input_file)

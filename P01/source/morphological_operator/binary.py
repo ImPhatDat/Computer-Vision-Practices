@@ -1,26 +1,26 @@
 import numpy as np
 from cv2 import imshow, waitKey # for debugging and view process only
 
-def erode(img, kernel):
-    kernel_center = (kernel.shape[0] // 2, kernel.shape[1] // 2)
-    kernel_ones_count = kernel.sum()
-    eroded_img = np.zeros((img.shape[0] + kernel.shape[0] - 1, img.shape[1] + kernel.shape[1] - 1))
-    img_shape = img.shape
+# def erode(img, kernel):
+#     kernel_center = (kernel.shape[0] // 2, kernel.shape[1] // 2)
+#     kernel_ones_count = kernel.sum()
+#     eroded_img = np.zeros((img.shape[0] + kernel.shape[0] - 1, img.shape[1] + kernel.shape[1] - 1))
+#     img_shape = img.shape
 
-    x_append = np.zeros((img.shape[0], kernel.shape[1] - 1))
-    img = np.append(img, x_append, axis=1)
+#     x_append = np.zeros((img.shape[0], kernel.shape[1] - 1))
+#     img = np.append(img, x_append, axis=1)
 
-    y_append = np.zeros((kernel.shape[0] - 1, img.shape[1]))
-    img = np.append(img, y_append, axis=0)
+#     y_append = np.zeros((kernel.shape[0] - 1, img.shape[1]))
+#     img = np.append(img, y_append, axis=0)
 
-    for i in range(img_shape[0]):
-        for j in range(img_shape[1]):
-            i_ = i + kernel.shape[0]
-            j_ = j + kernel.shape[1]
-            if kernel_ones_count == (kernel * img[i:i_, j:j_]).sum() / 255:
-                eroded_img[i + kernel_center[0], j + kernel_center[1]] = 1
+#     for i in range(img_shape[0]):
+#         for j in range(img_shape[1]):
+#             i_ = i + kernel.shape[0]
+#             j_ = j + kernel.shape[1]
+#             if kernel_ones_count == (kernel * img[i:i_, j:j_]).sum() / 255:
+#                 eroded_img[i + kernel_center[0], j + kernel_center[1]] = 1
 
-    return eroded_img[:img_shape[0], :img_shape[1]]
+#     return eroded_img[:img_shape[0], :img_shape[1]]
 
 
 '''
@@ -31,17 +31,18 @@ def complement(img):
     return 255 - img
 
 def intersect_image(img1, img2):
-    # (np.logical_and(img1 == 255, img2 == 255) * 255).astype(np.uint8)
     return np.minimum(img1, img2)
 
 def union_image(img1, img2):
-    # (np.logical_or(img1 == 255, img2 == 255) * 255).astype(np.uint8)
     return np.maximum(img1, img2)
+
+def subtract(img1, img2):
+    return (np.clip(img1 - img2, 0, 255)).astype(np.uint8)
 
 # redefine
 def erode(img, kernel):
     kernel_center = (kernel.shape[0] // 2, kernel.shape[1] // 2)
-    kernel_ones_count = np.sum(kernel)
+    kernel_ones = kernel == 1
     padded_img = np.pad(img, ((kernel_center[0], kernel_center[0]), (kernel_center[1], kernel_center[1])), 
                         mode='constant', constant_values=0) # use pad instead of append
     eroded_img = np.zeros_like(img)
@@ -49,13 +50,14 @@ def erode(img, kernel):
     for i in range(img.shape[0]):
         for j in range(img.shape[1]):
             region = padded_img[i:i + kernel.shape[0], j:j + kernel.shape[1]]
-            if np.sum(region * kernel) == kernel_ones_count * 255:
+            if np.all(region[kernel_ones] == 255):
                 eroded_img[i, j] = 255 # use 255 instead of 1
 
     return eroded_img
 
 def dilate(img, kernel):
     kernel_center = (kernel.shape[0] // 2, kernel.shape[1] // 2)
+    kernel_ones = kernel == 1
     padded_img = np.pad(img, ((kernel_center[0], kernel_center[0]), (kernel_center[1], kernel_center[1])), 
                         mode='constant', constant_values=0) # use pad instead of append
     dilated_img = np.zeros_like(img)
@@ -63,7 +65,7 @@ def dilate(img, kernel):
     for i in range(img.shape[0]):
         for j in range(img.shape[1]):
             region = padded_img[i:i + kernel.shape[0], j:j + kernel.shape[1]]
-            if np.any(region * kernel):
+            if np.any(region[kernel_ones] == 255):
                 dilated_img[i, j] = 255 # use 255 instead of 1
 
     return dilated_img
@@ -89,7 +91,7 @@ def hitmiss(img, kernel):
     
     return hit_or_miss_result
 
-# Zhang-Suen thinning algorithm, ref: https://rosettacode.org/wiki/Zhang-Suen_thinning_algorithm
+# Zhang-Suen thinning algorithm
 def zhangsuen_thinning(img):
     # convert to binary
     img = img // 255
@@ -145,13 +147,10 @@ def thinning(img, kernel=None):
     
     # use morphological operators: A - (A hitmiss B)
     # or A intersect (A hitmiss B)c
-    return intersect_image(img, complement(hitmiss(img, kernel)))
+    return subtract(img, hitmiss(img, kernel))
 
 
 # ------ BONUS ------
-
-def subtract(img1, img2):
-    return (np.clip(img1 - img2, 0, 255)).astype(np.uint8)
 
 # Boundary Extraction
 def boundary(img, kernel):
@@ -228,8 +227,28 @@ def convex_hull(img):
     return res.astype(np.uint8)
     
 # Thickening
+def thickening(img, kernel):
+    return union_image(img, hitmiss(img, kernel))
 
 # Skeletons
+def skeletons(img, kernel):
+    res = np.zeros_like(img)
+    k = 0
+    while True:
+        kerode = img
+        for _ in range(k):
+            kerode = erode(kerode, kernel)
+        if kerode.sum() == 0:
+            break
+        
+        sk = subtract(kerode, opening(kerode, kernel))
+        res = union_image(res, sk)
+        
+        imshow(f"in progress", res)
+        waitKey(50)
+        
+        k += 1
+    return res
 
 # Pruning
 
