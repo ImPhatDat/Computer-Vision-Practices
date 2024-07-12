@@ -44,14 +44,14 @@ def erode(img, kernel):
     kernel_center = (kernel.shape[0] // 2, kernel.shape[1] // 2)
     kernel_ones = kernel == 1
     padded_img = np.pad(img, ((kernel_center[0], kernel_center[0]), (kernel_center[1], kernel_center[1])), 
-                        mode='constant', constant_values=0) # use pad instead of append
+                        mode='constant', constant_values=0)
     eroded_img = np.zeros_like(img)
 
     for i in range(img.shape[0]):
         for j in range(img.shape[1]):
             region = padded_img[i:i + kernel.shape[0], j:j + kernel.shape[1]]
             if np.all(region[kernel_ones] == 255):
-                eroded_img[i, j] = 255 # use 255 instead of 1
+                eroded_img[i, j] = 255 # use 255 instead
 
     return eroded_img
 
@@ -59,14 +59,14 @@ def dilate(img, kernel):
     kernel_center = (kernel.shape[0] // 2, kernel.shape[1] // 2)
     kernel_ones = kernel == 1
     padded_img = np.pad(img, ((kernel_center[0], kernel_center[0]), (kernel_center[1], kernel_center[1])), 
-                        mode='constant', constant_values=0) # use pad instead of append
+                        mode='constant', constant_values=0)
     dilated_img = np.zeros_like(img)
 
     for i in range(img.shape[0]):
         for j in range(img.shape[1]):
             region = padded_img[i:i + kernel.shape[0], j:j + kernel.shape[1]]
             if np.any(region[kernel_ones] == 255):
-                dilated_img[i, j] = 255 # use 255 instead of 1
+                dilated_img[i, j] = 255 # use 255 instead
 
     return dilated_img
 
@@ -86,10 +86,8 @@ def hitmiss(img, kernel):
     kernel2 = np.where(kernel2 == -1, 1, kernel2)
     eroded_complement = erode(complement(img), kernel2)   
     
-    # intersect 
-    hit_or_miss_result = intersect_image(eroded_img, eroded_complement)
-    
-    return hit_or_miss_result
+    # intersect
+    return intersect_image(eroded_img, eroded_complement)
 
 # Zhang-Suen thinning algorithm
 def zhangsuen_thinning(img):
@@ -141,10 +139,7 @@ def zhangsuen_thinning(img):
         for x, y in changing2: img[y][x] = 0
     return img * 255
 
-def thinning(img, kernel=None):
-    if kernel is None:
-        return zhangsuen_thinning(img)
-    
+def thinning(img, kernel):
     # use morphological operators: A - (A hitmiss B)
     # or A intersect (A hitmiss B)c
     return subtract(img, hitmiss(img, kernel))
@@ -251,5 +246,46 @@ def skeletons(img, kernel):
     return res
 
 # Pruning
+def pruning(img, n=3):
+    # structuring elements
+    Bs = []
+    Bs.append(np.array([[0, -1 , -1],
+                        [1, 1, -1],
+                        [0, -1, -1]], dtype=np.int8)) # B1
+    Bs.extend([np.rot90(Bs[0], k + 1) for k in range(3)]) # B2, B3, B4
+    Bs.append(np.array([[1, -1 , -1],
+                        [-1, 1, -1],
+                        [-1, -1, -1]], dtype=np.int8)) # B5
+    Bs.extend([np.rot90(Bs[4], k + 1) for k in range(3)]) # B6, B7, B8
+    
+    # Apply thinning n times: X1
+    X1 = img.copy()
+    for _ in range(n):
+        for B in Bs:
+            X1 = thinning(X1, B)
+    
+    imshow(f"X1 (thinning)", X1)
+    waitKey(50)
+    
+    # Get endpoints: X2
+    X2 = hitmiss(X1, Bs[0])
+    for i in range(len(Bs) - 1):
+        X2 = union_image(X2, hitmiss(X1, Bs[i + 1]))
+        
+    imshow(f"X2 (endpoints)", X2)
+    waitKey(50)
+        
+    # Dilation by H n times
+    H = np.ones((3, 3), dtype=np.uint8) # reconstruction dilation
+    
+    X3 = intersect_image(dilate(X2, H), img)
+    for _ in range(n - 1):
+        X3 = intersect_image(dilate(X3, H), img)
+    
+    imshow(f"X3 (reconstruction dilation)", X3)
+    waitKey(50)
+    
+    # Union X1 X3
+    return union_image(X1, X3)
 
 # Morphological Reconstruction

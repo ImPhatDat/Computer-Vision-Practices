@@ -20,10 +20,6 @@ def operator(in_file, out_file, mor_op, wait_key_time=0, xpos=None, ypos=None):
 
     kernel = np.ones((3, 3), np.uint8)
     img_out = None
-    
-    kernel = np.array([[1, 0, 0],
-                       [1, 0, 0],
-                       [1, 0, 0]], dtype=np.uint8)
 
     '''
     TODO: implement morphological operators
@@ -90,7 +86,7 @@ def operator(in_file, out_file, mor_op, wait_key_time=0, xpos=None, ypos=None):
         cv2.imshow('OpenCV thinning image', img_thinning)
         cv2.waitKey(wait_key_time)
 
-        img_thinning_manual = binary.thinning(img)
+        img_thinning_manual = binary.zhangsuen_thinning(img)
         cv2.imshow('manual thinning (zhang-suen) image', img_thinning_manual)
         cv2.waitKey(wait_key_time)
 
@@ -189,6 +185,13 @@ def operator(in_file, out_file, mor_op, wait_key_time=0, xpos=None, ypos=None):
         cv2.waitKey(wait_key_time)
 
         img_out = img_skeletons_manual
+    
+    elif mor_op == 'pruning':        
+        img_pruning_manual = binary.pruning(img)
+        cv2.imshow('manual pruning image', img_pruning_manual)
+        cv2.waitKey(wait_key_time)
+
+        img_out = img_pruning_manual
     
 
     if img_out is not None:
