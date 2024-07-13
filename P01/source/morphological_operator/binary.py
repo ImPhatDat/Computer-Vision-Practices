@@ -347,3 +347,14 @@ def hole_fill_all(img, kernel):
     F[:, -1] = 255 - img[:, -1]
     
     return complement(reconstruction_dilate(F, complement(img), kernel))
+
+def border_clearing(img, kernel):
+    F = np.zeros_like(img)
+    # set border to border of img
+    F[0, :] = img[0, :]
+    F[-1, :] = img[-1, :]
+    F[:, 0] = img[:, 0]
+    F[:, -1] = img[:, -1]
+    
+    rd = reconstruction_dilate(F, img, kernel)
+    return img - rd

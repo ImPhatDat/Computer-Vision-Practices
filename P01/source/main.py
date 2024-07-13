@@ -5,7 +5,7 @@ import cv2
 import numpy as np
 from morphological_operator import binary
 
-def operator(in_file, out_file, mor_op, wait_key_time=0, xpos=None, ypos=None):
+def operator(in_file, out_file, mor_op, wait_key_time=0):
     # img_origin = cv2.imread(in_file)
     # cv2.imshow('original image', img_origin)
     # cv2.waitKey(wait_key_time)
@@ -117,7 +117,10 @@ def operator(in_file, out_file, mor_op, wait_key_time=0, xpos=None, ypos=None):
         img_out = img_boundary_manual
         
     elif mor_op == 'hole_filling':
-        assert (xpos >= 0 and ypos >= 0), "For this option, you must specify starting point (x, y)"
+        print("\nEnter the coordinates for starting point")
+        xpos = input("x:")
+        ypos = input("y:")
+        
         img_floodfill = img.copy()
         cv2.floodFill(img_floodfill, None, (0,0), 255)
         img_hole_filling = img + cv2.bitwise_not(img_floodfill)
@@ -131,7 +134,9 @@ def operator(in_file, out_file, mor_op, wait_key_time=0, xpos=None, ypos=None):
         img_out = img_fill_hole_manual
         
     elif mor_op == 'ccs':
-        assert (xpos >= 0 and ypos >= 0), "For this option, you must specify starting point (x, y)"
+        print("\nEnter the coordinates for starting point")
+        xpos = input("x:")
+        ypos = input("y:")
         
         # Find connected components
         _, labels_im = cv2.connectedComponents(img)
@@ -222,6 +227,13 @@ def operator(in_file, out_file, mor_op, wait_key_time=0, xpos=None, ypos=None):
         cv2.waitKey(wait_key_time)
 
         img_out = img_hole_filled_all_manual
+        
+    elif mor_op == 'border_clearing':
+        img_border_cleared_all_manual = binary.border_clearing(img, kernel)
+        cv2.imshow('manual border_cleared image', img_border_cleared_all_manual)
+        cv2.waitKey(wait_key_time)
+
+        img_out = img_border_cleared_all_manual
 
     if img_out is not None:
         cv2.imwrite(out_file, img_out)
@@ -232,15 +244,11 @@ def main(argv):
     output_file = ''
     mor_op = ''
     wait_key_time = 0
-    
-    # optional
-    xpos = ypos = -1 
 
-    description = 'main.py -i <input_file> -o <output_file> -p <mor_operator> -t <wait_key_time>  -x <xpos> -y <ypos>'
+    description = 'main.py -i <input_file> -o <output_file> -p <mor_operator> -t <wait_key_time>'
 
     try:
-        opts, args = getopt.getopt(argv, "hi:o:p:t:x:y:", ["in_file=", "out_file=", "mor_operator=", "wait_key_time=",
-                                                       "xpos=", "ypos="])
+        opts, args = getopt.getopt(argv, "hi:o:p:t:", ["in_file=", "out_file=", "mor_operator=", "wait_key_time="])
     except getopt.GetoptError:
         print(description)
         sys.exit(2)
@@ -257,17 +265,13 @@ def main(argv):
             mor_op = arg
         elif opt in ("-t", "--wait_key_time"):
             wait_key_time = int(arg)
-        elif opt in ("-x", "--xpos"):
-            xpos = int(arg)
-        elif opt in ("-y", "--ypos"):
-            ypos = int(arg)
 
     print('Input file is ', input_file)
     print('Output file is ', output_file)
     print('Morphological operator is ', mor_op)
     print('Wait key time is ', wait_key_time)
 
-    operator(input_file, output_file, mor_op, wait_key_time, xpos, ypos)
+    operator(input_file, output_file, mor_op, wait_key_time)
     cv2.waitKey(wait_key_time)
 
 
