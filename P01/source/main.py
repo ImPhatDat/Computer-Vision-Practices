@@ -81,7 +81,7 @@ def operator(in_file, out_file, mor_op, wait_key_time=0):
 
         img_out = img_hitmiss_manual
         
-    elif mor_op == 'thinning':
+    elif mor_op == 'zhangsuen_thinning':
         img_thinning = cv2.ximgproc.thinning(img) # use Zhang-Suen in default
         cv2.imshow('OpenCV thinning image', img_thinning)
         cv2.waitKey(wait_key_time)
@@ -93,11 +93,7 @@ def operator(in_file, out_file, mor_op, wait_key_time=0):
         img_out = img_thinning_manual
         
     elif mor_op == 'morph_thinning':
-        img_thinning = cv2.bitwise_and(img, cv2.bitwise_not(cv2.morphologyEx(img, cv2.MORPH_HITMISS, kernel)))
-        cv2.imshow('OpenCV thinning image', img_thinning)
-        cv2.waitKey(wait_key_time)
-
-        img_thinning_manual = binary.thinning(img, kernel)
+        img_thinning_manual = binary.thinning(img)
         cv2.imshow('manual thinning (morph) image', img_thinning_manual)
         cv2.waitKey(wait_key_time)
 
@@ -118,8 +114,8 @@ def operator(in_file, out_file, mor_op, wait_key_time=0):
         
     elif mor_op == 'hole_filling':
         print("\nEnter the coordinates for starting point")
-        xpos = input("x:")
-        ypos = input("y:")
+        xpos = int(input("x: "))
+        ypos = int(input("y: "))
         
         img_floodfill = img.copy()
         cv2.floodFill(img_floodfill, None, (0,0), 255)
@@ -135,8 +131,8 @@ def operator(in_file, out_file, mor_op, wait_key_time=0):
         
     elif mor_op == 'ccs':
         print("\nEnter the coordinates for starting point")
-        xpos = input("x:")
-        ypos = input("y:")
+        xpos = int(input("x: "))
+        ypos = int(input("y: "))
         
         # Find connected components
         _, labels_im = cv2.connectedComponents(img)
@@ -172,16 +168,7 @@ def operator(in_file, out_file, mor_op, wait_key_time=0):
         img_out = img_convex_hull_manual
 
     elif mor_op == 'thickening':
-        # Note that for thickening to work, 
-        # the structuring element must always have a zero or a blank at its origin
-        
-        kernel[1,1] = 0
-
-        img_thickening = cv2.bitwise_or(img, cv2.morphologyEx(img, cv2.MORPH_HITMISS, kernel))
-        cv2.imshow('OpenCV thickening image', img_thickening)
-        cv2.waitKey(wait_key_time)
-        
-        img_thickening_manual = binary.thickening(img, kernel)
+        img_thickening_manual = binary.thickening(img)
         cv2.imshow('manual thickening image', img_thickening_manual)
         cv2.waitKey(wait_key_time)
 

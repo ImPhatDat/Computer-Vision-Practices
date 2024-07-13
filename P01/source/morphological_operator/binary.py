@@ -42,15 +42,15 @@ def subtract(img1, img2):
 # redefine
 def erode(img, kernel, n=1):
     kernel_center = (kernel.shape[0] // 2, kernel.shape[1] // 2)
-    kernel_ones = kernel == 1
     padded_img = np.pad(img, ((kernel_center[0], kernel_center[0]), (kernel_center[1], kernel_center[1])), 
                         mode='constant', constant_values=0)
     eroded_img = np.zeros_like(img)
+    foreground = kernel == 1
 
     for i in range(img.shape[0]):
         for j in range(img.shape[1]):
             region = padded_img[i:i + kernel.shape[0], j:j + kernel.shape[1]]
-            if np.all(region[kernel_ones] == 255):
+            if np.all(region[foreground] == 255):
                 eroded_img[i, j] = 255 # use 255 instead
 
     if n == 1:
@@ -60,15 +60,15 @@ def erode(img, kernel, n=1):
 
 def dilate(img, kernel, n=1):
     kernel_center = (kernel.shape[0] // 2, kernel.shape[1] // 2)
-    kernel_ones = kernel == 1
     padded_img = np.pad(img, ((kernel_center[0], kernel_center[0]), (kernel_center[1], kernel_center[1])), 
                         mode='constant', constant_values=0)
     dilated_img = np.zeros_like(img)
+    foreground = kernel == 1
 
     for i in range(img.shape[0]):
         for j in range(img.shape[1]):
             region = padded_img[i:i + kernel.shape[0], j:j + kernel.shape[1]]
-            if np.any(region[kernel_ones] == 255):
+            if np.any(region[foreground] == 255):
                 dilated_img[i, j] = 255 # use 255 instead
 
     if n == 1:
@@ -84,14 +84,29 @@ def closing(img, kernel):
 
 # Hit-or-Miss transformation
 def hitmiss(img, kernel):
-    # A eroded by B
-    kernel1 = np.where(kernel == 1, 1, 0)
-    eroded_img = erode(img, kernel1)
-    # Ac eroded by Bc
-    kernel2 = np.where(kernel == -1, 1, 0)
-    eroded_complement = erode(complement(img), kernel2)   
-    # intersect
-    return intersect_image(eroded_img, eroded_complement)
+    # # A eroded by B
+    # eroded_img = erode(img, kernel)
+    # # Ac eroded by Bc
+    # eroded_complement = erode(complement(img), -1 * kernel)   
+    # # intersect
+    # return intersect_image(eroded_img, eroded_complement)
+    kernel_center = (kernel.shape[0] // 2, kernel.shape[1] // 2)
+    padded_img = np.pad(img, ((kernel_center[0], kernel_center[0]), (kernel_center[1], kernel_center[1])), 
+                        mode='constant', constant_values=0)
+    eroded_img = np.zeros_like(img)
+    foreground = kernel == 1
+    background = kernel == -1
+    for i in range(img.shape[0]):
+        for j in range(img.shape[1]):
+            region = padded_img[i:i + kernel.shape[0], j:j + kernel.shape[1]]
+            if np.all(region[foreground] == 255) and np.all(region[background] == 0):
+                eroded_img[i, j] = 255 # use 255 instead
+
+    return eroded_img 
+
+def simplified_hitmiss(img, kernel):
+    # erode without background match requirement
+    return erode(img, kernel)
 
 # Zhang-Suen thinning algorithm
 def zhangsuen_thinning(img):
@@ -143,10 +158,35 @@ def zhangsuen_thinning(img):
         for x, y in changing2: img[y][x] = 0
     return img * 255
 
-def thinning(img, kernel):
-    # use morphological operators: A - (A hitmiss B)
-    # or A intersect (A hitmiss B)c
-    return subtract(img, hitmiss(img, kernel))
+def thinning(img):
+    def single_thinning(img, kernel):
+        # use morphological operators: A - (A hitmiss B)
+        # or A intersect (A hitmiss B)c
+        return subtract(img, hitmiss(img, kernel))
+    # structuring elements
+    Bs = [None for _ in range(8)]
+    Bs[0] = np.array([[-1, -1, -1],
+                    [0, 1, 0],
+                    [1, 1, 1]], dtype=np.int8) # B1
+    Bs[1] = np.array([[0, -1, -1],
+                    [1, 1, -1],
+                    [1, 1, 0]], dtype=np.int8) # B2
+    Bs[2], Bs[4], Bs[6] = [np.rot90(Bs[0], k + 1, axes=(1,0)) for k in range(3)]
+    Bs[3], Bs[5], Bs[7] = [np.rot90(Bs[0], k + 1, axes=(1,0)) for k in range(3)]
+    
+    current = img
+    while True:
+        prev = current.copy()
+        current = prev
+        for B in Bs:
+            current = single_thinning(current, B)
+        
+        imshow("in progress", current)
+        waitKey(50)
+        
+        if np.array_equal(prev, current):
+            break
+    return current
 
 
 # ------ BONUS ------
@@ -212,7 +252,7 @@ def convex_hull(img):
             waitKey(1000)
             
             X_prev = X_currents[i].copy()
-            X_currents[i] = union_image(hitmiss(X_currents[i], Bs[i]), img)
+            X_currents[i] = union_image(simplified_hitmiss(X_currents[i], Bs[i]), img)
             
             if np.array_equal(X_currents[i], X_prev):
                 break
@@ -224,8 +264,8 @@ def convex_hull(img):
     return res.astype(np.uint8)
     
 # Thickening
-def thickening(img, kernel):
-    return union_image(img, hitmiss(img, kernel))
+def thickening(img):
+    return complement(thinning(complement(img)))
 
 # Skeletons
 def skeletons(img, kernel):
@@ -270,9 +310,9 @@ def pruning(img, n=3):
     waitKey(50)
     
     # Get endpoints: X2
-    X2 = hitmiss(X1, Bs[0])
+    X2 = simplified_hitmiss(X1, Bs[0])
     for i in range(len(Bs) - 1):
-        X2 = union_image(X2, hitmiss(X1, Bs[i + 1]))
+        X2 = union_image(X2, simplified_hitmiss(X1, Bs[i + 1]))
         
     imshow(f"X2 (endpoints)", X2)
     waitKey(50)
