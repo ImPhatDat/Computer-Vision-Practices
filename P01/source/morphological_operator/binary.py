@@ -40,7 +40,7 @@ def subtract(img1, img2):
     return (np.clip(img1 - img2, 0, 255)).astype(np.uint8)
 
 # redefine
-def erode(img, kernel):
+def erode(img, kernel, n=1):
     kernel_center = (kernel.shape[0] // 2, kernel.shape[1] // 2)
     kernel_ones = kernel == 1
     padded_img = np.pad(img, ((kernel_center[0], kernel_center[0]), (kernel_center[1], kernel_center[1])), 
@@ -53,9 +53,12 @@ def erode(img, kernel):
             if np.all(region[kernel_ones] == 255):
                 eroded_img[i, j] = 255 # use 255 instead
 
-    return eroded_img
+    if n == 1:
+        return eroded_img
+    else:
+        return erode(eroded_img, kernel, n - 1)
 
-def dilate(img, kernel):
+def dilate(img, kernel, n=1):
     kernel_center = (kernel.shape[0] // 2, kernel.shape[1] // 2)
     kernel_ones = kernel == 1
     padded_img = np.pad(img, ((kernel_center[0], kernel_center[0]), (kernel_center[1], kernel_center[1])), 
@@ -68,7 +71,10 @@ def dilate(img, kernel):
             if np.any(region[kernel_ones] == 255):
                 dilated_img[i, j] = 255 # use 255 instead
 
-    return dilated_img
+    if n == 1:
+        return dilated_img
+    else:
+        return dilate(dilated_img, kernel, n - 1)
 
 def opening(img, kernel):
     return dilate(erode(img, kernel), kernel)
@@ -79,13 +85,11 @@ def closing(img, kernel):
 # Hit-or-Miss transformation
 def hitmiss(img, kernel):
     # A eroded by B
-    kernel1 = np.where(kernel == -1, 0, kernel)
+    kernel1 = np.where(kernel == 1, 1, 0)
     eroded_img = erode(img, kernel1)
     # Ac eroded by Bc
-    kernel2 = np.where(kernel == 1, 0, kernel)
-    kernel2 = np.where(kernel2 == -1, 1, kernel2)
+    kernel2 = np.where(kernel == -1, 1, 0)
     eroded_complement = erode(complement(img), kernel2)   
-    
     # intersect
     return intersect_image(eroded_img, eroded_complement)
 
@@ -203,17 +207,15 @@ def convex_hull(img):
     X_currents = [img.copy() for _ in range(len(Bs))]
     
     for i in range(len(X_currents)):
-        X_prev_prev = None
         while True:
+            imshow(f"in progress ({i})", X_currents[i])
+            waitKey(1000)
+            
             X_prev = X_currents[i].copy()
             X_currents[i] = union_image(hitmiss(X_currents[i], Bs[i]), img)
-        
-            imshow(f"in progress ({i})", X_currents[i])
-            waitKey(50)
             
-            if np.array_equal(X_currents[i], X_prev) or np.array_equal(X_currents[i], X_prev_prev):
+            if np.array_equal(X_currents[i], X_prev):
                 break
-            X_prev_prev = X_prev
     
     # union D (last X) to get C(A)
     res = X_currents[0]
@@ -252,11 +254,11 @@ def pruning(img, n=3):
     Bs.append(np.array([[0, -1 , -1],
                         [1, 1, -1],
                         [0, -1, -1]], dtype=np.int8)) # B1
-    Bs.extend([np.rot90(Bs[0], k + 1) for k in range(3)]) # B2, B3, B4
+    Bs.extend([np.rot90(Bs[0], k + 1, axes=(1,0)) for k in range(3)]) # B2, B3, B4
     Bs.append(np.array([[1, -1 , -1],
                         [-1, 1, -1],
                         [-1, -1, -1]], dtype=np.int8)) # B5
-    Bs.extend([np.rot90(Bs[4], k + 1) for k in range(3)]) # B6, B7, B8
+    Bs.extend([np.rot90(Bs[4], k + 1, axes=(1,0)) for k in range(3)]) # B6, B7, B8
     
     # Apply thinning n times: X1
     X1 = img.copy()
@@ -288,4 +290,60 @@ def pruning(img, n=3):
     # Union X1 X3
     return union_image(X1, X3)
 
-# Morphological Reconstruction
+# -- Morphological Reconstruction --
+
+def geodesic_dilate(marker, mask, kernel):
+    return intersect_image(dilate(marker, kernel), mask)
+
+def geodesic_erode(marker, mask, kernel):
+    return union_image(erode(marker, kernel), mask)
+
+def reconstruction_dilate(marker, mask, kernel):
+    current = geodesic_dilate(marker, mask, kernel)
+    while True:
+        prev = current
+        current = geodesic_dilate(prev, mask, kernel)
+        
+        imshow(f"in progress", current)
+        waitKey(50)
+        
+        if np.array_equal(prev, current):
+            break
+    return current
+
+def reconstruction_erode(marker, mask, kernel):
+    current = geodesic_erode(marker, mask, kernel)
+    while True:
+        prev = current
+        current = geodesic_erode(prev, mask, kernel)
+        
+        imshow(f"in progress", current)
+        waitKey(50)
+        
+        if np.array_equal(prev, current):
+            break
+    return current
+
+def reconstruction_opening(img, kernel, n):
+    img_erode = erode(img, kernel, n)
+    imshow(f'Eroded image {n} times', img_erode)
+    waitKey(500)
+    img_recon_dilate_manual = reconstruction_dilate(img_erode, img, kernel)
+    return img_recon_dilate_manual
+
+def reconstruction_closing(img, kernel, n):
+    img_dilate = dilate(img, kernel, n)
+    imshow(f'Dilated image {n} times', img_dilate)
+    waitKey(500)
+    img_recon_dilate_manual = reconstruction_erode(img_dilate, img, kernel)
+    return img_recon_dilate_manual
+
+def hole_fill_all(img, kernel):
+    F = np.zeros_like(img)
+    # set border to 255 (or 1 in binary) - img
+    F[0, :] = 255 - img[0, :]
+    F[-1, :] = 255 - img[-1, :]
+    F[:, 0] = 255 - img[:, 0]
+    F[:, -1] = 255 - img[:, -1]
+    
+    return complement(reconstruction_dilate(F, complement(img), kernel))

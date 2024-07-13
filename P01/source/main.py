@@ -117,6 +117,7 @@ def operator(in_file, out_file, mor_op, wait_key_time=0, xpos=None, ypos=None):
         img_out = img_boundary_manual
         
     elif mor_op == 'hole_filling':
+        assert (xpos >= 0 and ypos >= 0), "For this option, you must specify starting point (x, y)"
         img_floodfill = img.copy()
         cv2.floodFill(img_floodfill, None, (0,0), 255)
         img_hole_filling = img + cv2.bitwise_not(img_floodfill)
@@ -130,6 +131,8 @@ def operator(in_file, out_file, mor_op, wait_key_time=0, xpos=None, ypos=None):
         img_out = img_fill_hole_manual
         
     elif mor_op == 'ccs':
+        assert (xpos >= 0 and ypos >= 0), "For this option, you must specify starting point (x, y)"
+        
         # Find connected components
         _, labels_im = cv2.connectedComponents(img)
         # Map component labels to hue values for visualization
@@ -192,7 +195,33 @@ def operator(in_file, out_file, mor_op, wait_key_time=0, xpos=None, ypos=None):
         cv2.waitKey(wait_key_time)
 
         img_out = img_pruning_manual
+        
+    elif mor_op == 'recon_opening':
+        img_recon_opening_manual = binary.reconstruction_opening(img, kernel, n=2)
+        cv2.imshow('manual recon_opening image', img_recon_opening_manual)
+        cv2.waitKey(wait_key_time)
+
+        img_out = img_recon_opening_manual
     
+    elif mor_op == 'recon_closing':
+        img_recon_closing_manual = binary.reconstruction_closing(img, kernel, n=2)
+        cv2.imshow('manual recon_closing image', img_recon_closing_manual)
+        cv2.waitKey(wait_key_time)
+
+        img_out = img_recon_closing_manual
+        
+    elif mor_op == 'hole_fill_all':
+        img_floodfill = img.copy()
+        cv2.floodFill(img_floodfill, None, (0,0), 255)
+        img_hole_filling = img + cv2.bitwise_not(img_floodfill)
+        cv2.imshow('OpenCV fill_hole image', img_hole_filling)
+        cv2.waitKey(wait_key_time)
+        
+        img_hole_filled_all_manual = binary.hole_fill_all(img, kernel)
+        cv2.imshow('manual hole_filled_all image', img_hole_filled_all_manual)
+        cv2.waitKey(wait_key_time)
+
+        img_out = img_hole_filled_all_manual
 
     if img_out is not None:
         cv2.imwrite(out_file, img_out)
@@ -205,12 +234,12 @@ def main(argv):
     wait_key_time = 0
     
     # optional
-    xpos = ypos = 0 
+    xpos = ypos = -1 
 
     description = 'main.py -i <input_file> -o <output_file> -p <mor_operator> -t <wait_key_time>  -x <xpos> -y <ypos>'
 
     try:
-        opts, args = getopt.getopt(argv, "hi:o:p:t:", ["in_file=", "out_file=", "mor_operator=", "wait_key_time=",
+        opts, args = getopt.getopt(argv, "hi:o:p:t:x:y:", ["in_file=", "out_file=", "mor_operator=", "wait_key_time=",
                                                        "xpos=", "ypos="])
     except getopt.GetoptError:
         print(description)
