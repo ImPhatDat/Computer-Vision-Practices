@@ -6,14 +6,7 @@ import numpy as np
 from morphological_operator import binary
 
 def operator(in_file, out_file, mor_op, wait_key_time=0):
-    # img_origin = cv2.imread(in_file)
-    # cv2.imshow('original image', img_origin)
-    # cv2.waitKey(wait_key_time)
-
     img_gray = cv2.imread(in_file, 0)
-    # cv2.imshow('gray image', img_gray)
-    # cv2.waitKey(wait_key_time)
-
     (thresh, img) = cv2.threshold(img_gray, 128, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)
     cv2.imshow('binary image', img)
     cv2.waitKey(wait_key_time)
