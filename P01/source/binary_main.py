@@ -214,6 +214,9 @@ def operator(in_file, out_file, mor_op, wait_key_time=0):
         cv2.waitKey(wait_key_time)
 
         img_out = img_border_cleared_all_manual
+    
+    else:
+        raise Exception("Not existed operator")
 
     if img_out is not None:
         cv2.imwrite(out_file, img_out)

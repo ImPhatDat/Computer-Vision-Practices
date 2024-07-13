@@ -158,28 +158,30 @@ def zhangsuen_thinning(img):
         for x, y in changing2: img[y][x] = 0
     return img * 255
 
-def thinning(img):
-    def single_thinning(img, kernel):
-        # use morphological operators: A - (A hitmiss B)
-        # or A intersect (A hitmiss B)c
-        return subtract(img, hitmiss(img, kernel))
-    # structuring elements
-    Bs = [None for _ in range(8)]
-    Bs[0] = np.array([[-1, -1, -1],
-                    [0, 1, 0],
-                    [1, 1, 1]], dtype=np.int8) # B1
-    Bs[1] = np.array([[0, -1, -1],
-                    [1, 1, -1],
-                    [1, 1, 0]], dtype=np.int8) # B2
-    Bs[2], Bs[4], Bs[6] = [np.rot90(Bs[0], k + 1, axes=(1,0)) for k in range(3)]
-    Bs[3], Bs[5], Bs[7] = [np.rot90(Bs[0], k + 1, axes=(1,0)) for k in range(3)]
+def single_thinning_iter(img, Bs):
+    # use morphological operators: A - (A hitmiss B)
+    current = img
+    for B in Bs:
+        current = subtract(current, hitmiss(current, B))
+    return current
+
+def thinning(img, Bs=None):
+    if Bs is None:
+        # structuring elements
+        Bs = [None for _ in range(8)]
+        Bs[0] = np.array([[-1, -1, -1],
+                        [0, 1, 0],
+                        [1, 1, 1]], dtype=np.int8) # B1
+        Bs[1] = np.array([[0, -1, -1],
+                        [1, 1, -1],
+                        [1, 1, 0]], dtype=np.int8) # B2
+        Bs[2], Bs[4], Bs[6] = [np.rot90(Bs[0], k + 1, axes=(1,0)) for k in range(3)]
+        Bs[3], Bs[5], Bs[7] = [np.rot90(Bs[0], k + 1, axes=(1,0)) for k in range(3)]
     
     current = img
     while True:
         prev = current.copy()
-        current = prev
-        for B in Bs:
-            current = single_thinning(current, B)
+        current = single_thinning_iter(prev, Bs)
         
         imshow("in progress", current)
         waitKey(50)
@@ -303,16 +305,15 @@ def pruning(img, n=3):
     # Apply thinning n times: X1
     X1 = img.copy()
     for _ in range(n):
-        for B in Bs:
-            X1 = thinning(X1, B)
+        X1 = single_thinning_iter(X1, Bs)
     
     imshow(f"X1 (thinning)", X1)
     waitKey(50)
     
     # Get endpoints: X2
-    X2 = simplified_hitmiss(X1, Bs[0])
+    X2 = hitmiss(X1, Bs[0])
     for i in range(len(Bs) - 1):
-        X2 = union_image(X2, simplified_hitmiss(X1, Bs[i + 1]))
+        X2 = union_image(X2, hitmiss(X1, Bs[i + 1]))
         
     imshow(f"X2 (endpoints)", X2)
     waitKey(50)
