@@ -66,8 +66,8 @@ def operator(in_file, out_file, mor_op, wait_key_time=0):
         img_out = img_closing_manual
     
     elif mor_op == 'smoothing':
-        img_smoothing = cv2.morphologyEx(cv2.morphologyEx(img, cv2.MORPH_CLOSE, kernel), 
-                                            cv2.MORPH_OPEN, 
+        img_smoothing = cv2.morphologyEx(cv2.morphologyEx(img, cv2.MORPH_OPEN, kernel), 
+                                            cv2.MORPH_CLOSE, 
                                             kernel) 
         cv2.imshow('OpenCV smoothing image', img_smoothing)
         cv2.waitKey(wait_key_time)
@@ -112,7 +112,10 @@ def operator(in_file, out_file, mor_op, wait_key_time=0):
         img_out = img_bottom_hat_manual
         
     elif mor_op == 'granulometry':
-        area_diffs = grayscale.granulometry(img, max_size=35)
+        smooth_radius = int(input("Enter the disk radius for smoothing: "))
+        max_size = int(input("Enter the disk radius max radius: "))
+        
+        area_diffs = grayscale.granulometry(img, smooth_radius=smooth_radius, max_size=max_size)
         # Plot the granulometry curve
         import matplotlib.pyplot as plt
         plt.plot(range(len(area_diffs)), area_diffs, marker='o')
@@ -124,7 +127,13 @@ def operator(in_file, out_file, mor_op, wait_key_time=0):
         plt.show()
         
     elif mor_op == 'textural_segmentation':
-        img_segment_manual = grayscale.textural_segmentation(img, kernel)
+        close_radius = int(input("Enter the disk radius for closing: "))
+        open_radius = int(input("Enter the disk radius for opening: "))
+        
+        img_segment_manual = grayscale.textural_segmentation(img, 
+                                                             close_radius=close_radius, 
+                                                             open_radius=open_radius,
+                                                             gradient_kernel=kernel)
         cv2.imshow('manual segment image', img_segment_manual)
         cv2.waitKey(wait_key_time)
         

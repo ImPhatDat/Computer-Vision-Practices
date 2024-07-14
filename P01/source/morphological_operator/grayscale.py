@@ -60,8 +60,8 @@ def top_hat(img, kernel):
 def bottom_hat(img, kernel):
     return subtract(closing(img, kernel), img)
 
-def granulometry(img, max_size=35):
-    img = smoothing(img, disk(5))
+def granulometry(img, smooth_radius, max_size):
+    img = smoothing(img, disk(smooth_radius))
     imshow(f"Smoothed image", img)
     waitKey(100)
     
@@ -87,14 +87,14 @@ def granulometry(img, max_size=35):
     
     return area_diffs
     
-def textural_segmentation(img, kernel):
-    closed = closing(img, disk(30))
+def textural_segmentation(img, close_radius, open_radius, gradient_kernel):
+    closed = closing(img, disk(close_radius))
     imshow("Closed image", closed)
     waitKey(500)
-    opened = opening(closed, disk(60))
+    opened = opening(closed, disk(open_radius))
     imshow("Opened image", opened)
     waitKey(500)
-    boundary = gradient(opened, kernel)
+    boundary = gradient(opened, gradient_kernel)
     imshow("Boundary (obtained by gradient)", boundary)
     waitKey(500)
     
