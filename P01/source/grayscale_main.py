@@ -1,8 +1,6 @@
 import sys
-import os
 import getopt
 import cv2
-import numpy as np
 from morphological_operator import grayscale
 
 def operator(in_file, out_file, mor_op, wait_key_time=0):
