@@ -10,7 +10,7 @@ def operator(in_file, out_file, mor_op, wait_key_time=0):
     cv2.imshow('grayscale image', img)
     cv2.waitKey(wait_key_time)
 
-    kernel = np.ones((3, 3), np.uint8)
+    kernel = grayscale.disk(3)
     img_out = None
 
     '''
@@ -40,6 +40,9 @@ def operator(in_file, out_file, mor_op, wait_key_time=0):
         img_out = img_erosion_manual
         
     elif mor_op == 'opening':
+        # # for demo
+        # kernel = np.ones((1, 32), dtype=np.uint8)
+        
         img_opening = cv2.morphologyEx(img, cv2.MORPH_OPEN, kernel) 
 
         cv2.imshow('OpenCV opening image', img_opening)
@@ -107,7 +110,57 @@ def operator(in_file, out_file, mor_op, wait_key_time=0):
         cv2.waitKey(wait_key_time)
 
         img_out = img_bottom_hat_manual
+        
+    elif mor_op == 'granulometry':
+        area_diffs = grayscale.granulometry(img, max_size=35)
+        # Plot the granulometry curve
+        import matplotlib.pyplot as plt
+        plt.plot(range(len(area_diffs)), area_diffs, marker='o')
+        plt.title('Granulometry')
+        plt.xlabel('r')
+        plt.ylabel('Differences in surface area')
+        plt.grid(True)
+        plt.savefig(out_file)
+        plt.show()
+        
+    elif mor_op == 'textural_segmentation':
+        img_segment_manual = grayscale.textural_segmentation(img, kernel)
+        cv2.imshow('manual segment image', img_segment_manual)
+        cv2.waitKey(wait_key_time)
+        
+        img_out = img_segment_manual
+        
+    elif mor_op == 'recon_opening':
+        # # for demo
+        # kernel = np.ones((1, 32), dtype=np.uint8)
+        
+        img_recon_opening_manual = grayscale.reconstruction_opening(img, kernel, n=1)
+        cv2.imshow('manual recon_opening image', img_recon_opening_manual)
+        cv2.waitKey(wait_key_time)
+
+        img_out = img_recon_opening_manual
     
+    elif mor_op == 'recon_closing':
+        # # for demo
+        # kernel = np.ones((1, 32), dtype=np.uint8)
+        
+        img_recon_closing_manual = grayscale.reconstruction_closing(img, kernel, n=1)
+        cv2.imshow('manual recon_closing image', img_recon_closing_manual)
+        cv2.waitKey(wait_key_time)
+
+        img_out = img_recon_closing_manual
+        
+    elif mor_op == 'recon_tophat':
+        # # for demo
+        # kernel = np.ones((1, 32), dtype=np.uint8)
+        
+        img_recon_tophat_manual = grayscale.reconstruction_tophat(img, kernel, n=1)
+        cv2.imshow('manual recon_tophat image', img_recon_tophat_manual)
+        cv2.waitKey(wait_key_time)
+
+        img_out = img_recon_tophat_manual
+        
+        
     else:
         print("Not existed operator")
         return
