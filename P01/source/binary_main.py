@@ -3,7 +3,7 @@ import os
 import getopt
 import cv2
 import numpy as np
-from morphological_operator import binary
+from morphological_operators import binary
 
 def operator(in_file, out_file, mor_op, wait_key_time=0):
     img_gray = cv2.imread(in_file, 0)
@@ -64,6 +64,11 @@ def operator(in_file, out_file, mor_op, wait_key_time=0):
         img_out = img_closing_manual
         
     elif mor_op == 'hitmiss':
+        # redefine kernel
+        kernel = np.array([[0, 1, 0],
+                           [1, -1, 1],
+                           [0, 1, 0]], dtype=np.int8)
+        
         img_hitmiss = cv2.morphologyEx(img, cv2.MORPH_HITMISS, kernel) 
         cv2.imshow('OpenCV hitmiss image', img_hitmiss)
         cv2.waitKey(wait_key_time)

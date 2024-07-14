@@ -1,0 +1,7 @@
+Các phép toán bổ sung:
+
+•	Thuật toán thinning Zhang-Suen
+•	Border clearing
+•	Lấp tất cả lỗ trong hình mà không cần biết điểm bắt đầu
+•	Morphological smoothing
+•	Top-hat  by reconstruction 
