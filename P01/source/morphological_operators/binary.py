@@ -172,11 +172,11 @@ def thinning(img, Bs=None):
         Bs[0] = np.array([[-1, -1, -1],
                         [0, 1, 0],
                         [1, 1, 1]], dtype=np.int8) # B1
+        Bs[2], Bs[4], Bs[6] = [np.rot90(Bs[0], k + 1, axes=(1,0)) for k in range(3)]
         Bs[1] = np.array([[0, -1, -1],
                         [1, 1, -1],
                         [1, 1, 0]], dtype=np.int8) # B2
-        Bs[2], Bs[4], Bs[6] = [np.rot90(Bs[0], k + 1, axes=(1,0)) for k in range(3)]
-        Bs[3], Bs[5], Bs[7] = [np.rot90(Bs[0], k + 1, axes=(1,0)) for k in range(3)]
+        Bs[3], Bs[5], Bs[7] = [np.rot90(Bs[1], k + 1, axes=(1,0)) for k in range(3)]
     
     current = img
     while True:
@@ -265,9 +265,41 @@ def convex_hull(img):
         res = union_image(res, X_currents[i + 1])
     return res.astype(np.uint8)
     
+    
+def single_thickening_iter(img, Bs):
+    # use morphological operators: A union (A hitmiss B)
+    current = img
+    for B in Bs:
+        current = union_image(current, hitmiss(current, B))
+    return current
+    
 # Thickening
-def thickening(img):
-    return complement(thinning(complement(img)))
+def thickening(img, Bs=None):
+    return complement(thinning(complement(img), Bs))
+    
+    # if Bs is None:
+    #     # structuring elements
+    #     Bs = [None for _ in range(8)]
+    #     Bs[0] = np.array([[1, 1, 1],
+    #                     [0, -1, 0],
+    #                     [-1, -1, -1]], dtype=np.int8) # B1
+    #     Bs[1] = np.array([[0, 1, 1],
+    #                     [-1, -1, 1],
+    #                     [-1, -1, 0]], dtype=np.int8) # B2
+    #     Bs[2], Bs[4], Bs[6] = [np.rot90(Bs[0], k + 1, axes=(1,0)) for k in range(3)]
+    #     Bs[3], Bs[5], Bs[7] = [np.rot90(Bs[0], k + 1, axes=(1,0)) for k in range(3)]
+    
+    # current = img
+    # while True:
+    #     prev = current.copy()
+    #     current = single_thickening_iter(prev, Bs)
+        
+    #     imshow("in progress", current)
+    #     waitKey(50)
+        
+    #     if np.array_equal(prev, current):
+    #         break
+    # return current
 
 # Skeletons
 def skeletons(img, kernel):

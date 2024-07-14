@@ -260,7 +260,7 @@ def main(argv):
     print('Wait key time is ', wait_key_time)
 
     operator(input_file, output_file, mor_op, wait_key_time)
-    # cv2.waitKey(wait_key_time)
+    cv2.waitKey(wait_key_time)
 
 
 if __name__ == "__main__":
